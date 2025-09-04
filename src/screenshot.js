@@ -34,4 +34,17 @@ export async function takeScreenshot(view, resultContainer, screenshotBtn) {
     }
 
 
+
+
+
+    const selectedText = view.state.doc.sliceString(selection.from, selection.to);
+
+    const tempEditorContainer = document.createElement('div');
+    tempEditorContainer.style.position = 'absolute';
+    tempEditorContainer.style.top = '0';
+    tempEditorContainer.style.left = '-9999px';
+    tempEditorContainer.style.width = `${view.dom.clientWidth}px`;
+    document.body.appendChild(tempEditorContainer);
+
+    let tempView;
 }
