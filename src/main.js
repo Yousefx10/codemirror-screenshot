@@ -6,7 +6,7 @@ import { basicSetup } from "codemirror";
 import { javascript } from '@codemirror/lang-javascript';
 import { oneDark } from '@codemirror/theme-one-dark';
 
-//import { takeScreenshot } from './screenshot.js';
+import { takeScreenshot } from './screenshot.js';
 
 
 
@@ -62,5 +62,5 @@ const screenshotBtn = document.getElementById('screenshot-btn');
 const resultContainer = document.getElementById('result-container');
 
 screenshotBtn.addEventListener('click', () => {
-    //takeScreenshot(view, resultContainer, screenshotBtn);
+    takeScreenshot(view, resultContainer, screenshotBtn);
 });
