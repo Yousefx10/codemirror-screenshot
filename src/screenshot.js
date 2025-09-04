@@ -47,4 +47,40 @@ export async function takeScreenshot(view, resultContainer, screenshotBtn) {
     document.body.appendChild(tempEditorContainer);
 
     let tempView;
+
+
+
+
+
+    try {
+        tempView = new EditorView({
+            state: EditorState.create({
+                doc: selectedText,
+                extensions: screenshotExtensions,
+            }),
+            parent: tempEditorContainer,
+        });
+
+        /*
+        Give the browser a brief moment to render the new view.
+        This is crucial...
+        to ensure all styles are applied before the screenshot is taken.
+        */
+
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        const editorBgColor = getComputedStyle(view.dom).backgroundColor;
+
+        const dataUrl = await htmlToImage.toPng(tempView.dom, {
+            backgroundColor: editorBgColor,
+            pixelRatio: 2, // Generate a higher-resolution image
+        });
+
+        const img = new Image();
+        img.src = dataUrl;
+        resultContainer.innerHTML = '';
+        resultContainer.appendChild(img);
+
+    }
+    catch (error) {}
 }
