@@ -86,4 +86,13 @@ export async function takeScreenshot(view, resultContainer, screenshotBtn) {
         console.error('Oops, something went wrong!', error);
         resultContainer.innerHTML = '<p>Sorry, there was an error generating the image.</p>';
     }
+    finally {
+        // IMPORTANT: Clean up the temporary editor and its container to prevent memory leaks
+        if (tempView) {
+            tempView.destroy();
+        }
+        document.body.removeChild(tempEditorContainer);
+        screenshotBtn.disabled = false;
+        screenshotBtn.textContent = 'Take Screenshot';
+    }
 }
