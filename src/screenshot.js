@@ -82,5 +82,8 @@ export async function takeScreenshot(view, resultContainer, screenshotBtn) {
         resultContainer.appendChild(img);
 
     }
-    catch (error) {}
+    catch (error) {
+        console.error('Oops, something went wrong!', error);
+        resultContainer.innerHTML = '<p>Sorry, there was an error generating the image.</p>';
+    }
 }
