@@ -6,7 +6,7 @@ import { basicSetup } from "codemirror";
 import { javascript } from '@codemirror/lang-javascript';
 import { oneDark } from '@codemirror/theme-one-dark';
 
-import { takeScreenshot } from './screenshot.js';
+//import { takeScreenshot } from './screenshot.js';
 
 
 
@@ -35,3 +35,32 @@ class Greeter {
   }
 }
 `;
+
+
+// Extensions for editor
+const mainEditorExtensions = [
+    basicSetup,
+    javascript(),
+    oneDark,
+    EditorView.lineWrapping,
+];
+
+
+
+//CodeMirror 6 Setup
+const editorParent = document.getElementById('editor');
+const view = new EditorView({
+    state: EditorState.create({
+        doc: initialCode,
+        extensions: mainEditorExtensions,
+    }),
+    parent: editorParent,
+});
+
+//UI Logic
+const screenshotBtn = document.getElementById('screenshot-btn');
+const resultContainer = document.getElementById('result-container');
+
+screenshotBtn.addEventListener('click', () => {
+    //takeScreenshot(view, resultContainer, screenshotBtn);
+});
