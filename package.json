@@ -16,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/Yousefx10/codemirror-screenshot/issues"
   },
-  "homepage": "https://github.com/Yousefx10/codemirror-screenshot#readme"
+  "homepage": "https://github.com/Yousefx10/codemirror-screenshot#readme",
+  "dependencies": {
+    "codemirror": "^6.0.2"
+  }
 }
