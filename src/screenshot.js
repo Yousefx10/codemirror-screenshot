@@ -40,6 +40,7 @@ export async function takeScreenshot(view, resultContainer, screenshotBtn) {
     const selectedText = view.state.doc.sliceString(selection.from, selection.to);
 
     const tempEditorContainer = document.createElement('div');
+    tempEditorContainer.classList.add('NEWeditor');
     tempEditorContainer.style.position = 'absolute';
     tempEditorContainer.style.top = '0';
     tempEditorContainer.style.left = '-9999px';
