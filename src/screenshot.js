@@ -5,6 +5,9 @@ import { oneDark } from '@codemirror/theme-one-dark';
 import { basicSetup } from 'codemirror';
 import * as htmlToImage from 'html-to-image';
 
+//=== THEME Settings ===
+
+//Fix the value of pixelRatio to get same result when page get zoom in or out
 const FIXED_PIXEL_RATIO = 1;
 const FONT_SIZE_PX = 14;
 const LINE_HEIGHT_PX = 21;
@@ -82,14 +85,16 @@ export async function takeScreenshot(view, resultContainer, screenshotBtn) {
         const exportWidth = TARGET_WIDTH;
         const exportHeight = Math.ceil(tempView.dom.scrollHeight);
 
+        //export HTML-TO-IMAGE with pixelRatio value
         const dataUrl = await htmlToImage.toPng(tempView.dom, {
             pixelRatio: FIXED_PIXEL_RATIO,
             width: exportWidth,
             height: exportHeight,
-            // backgroundColor: '#0b0e14',
+            // backgroundColor: '#0b0e14', //if needed a fixed backgroundColor
             // skipFonts: false,  //MAKES SURE TO LOAD FONT'S IF IT WERE "WebFonts"
         });
 
+        // Shows screenshot result:
         const img = document.createElement('img');
         img.src = dataUrl;
         img.alt = 'Code screenshot';
