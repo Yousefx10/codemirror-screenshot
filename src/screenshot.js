@@ -1,57 +1,68 @@
-//important IMPORTS
 import { EditorState } from '@codemirror/state';
-import { EditorView, lineNumbers } from '@codemirror/view';
+import { EditorView } from '@codemirror/view';
 import { javascript } from '@codemirror/lang-javascript';
 import { oneDark } from '@codemirror/theme-one-dark';
-import { basicSetup } from "codemirror";
+import { basicSetup } from 'codemirror';
 import * as htmlToImage from 'html-to-image';
 
+const FIXED_PIXEL_RATIO = 1;
+const FONT_SIZE_PX = 14;
+const LINE_HEIGHT_PX = 21;
+const FORCE_SCREENSHOT_WIDTH_PX = null;
+let INITIAL_EDITOR_WIDTH_PX = null;
 
-// A minimal set of extensions for the temporary screenshot editor.
 const screenshotExtensions = [
     basicSetup,
     javascript(),
     oneDark,
     EditorView.lineWrapping,
+    EditorView.theme({
+        ".cm-scroller": {
+            fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+            fontSize: `${FONT_SIZE_PX}px`,
+            lineHeight: `${LINE_HEIGHT_PX}px`,
+        },
+        ".cm-gutter, .cm-lineNumbers, .cm-gutterElement": {
+            fontFamily: "inherit",
+            lineHeight: `${LINE_HEIGHT_PX}px`,
+            fontSize: `${FONT_SIZE_PX}px`,
+        },
+    }),
 ];
 
-
 export async function takeScreenshot(view, resultContainer, screenshotBtn) {
-
-
-
-
-    screenshotBtn.disabled = true;
-    screenshotBtn.textContent = 'Generating...';
-    resultContainer.innerHTML = '<p>Processing your image...</p>';
-
-    const selection = view.state.selection.main;
-    if (selection.empty) {
-        resultContainer.innerHTML = '<p>Please select some code first.</p>';
-        screenshotBtn.disabled = false;
-        screenshotBtn.textContent = 'Take Screenshot';
-        return;
+    if (screenshotBtn) {
+        screenshotBtn.disabled = true;
+        screenshotBtn.textContent = 'Capturing...';
     }
 
+    const currentWidth = Math.ceil(view.dom.getBoundingClientRect().width);
+    if (FORCE_SCREENSHOT_WIDTH_PX != null) {
+        INITIAL_EDITOR_WIDTH_PX = FORCE_SCREENSHOT_WIDTH_PX;
+    } else if (INITIAL_EDITOR_WIDTH_PX == null) {
+        INITIAL_EDITOR_WIDTH_PX = currentWidth;
+    }
+    const TARGET_WIDTH = INITIAL_EDITOR_WIDTH_PX;
 
-
-
-
-    const selectedText = view.state.doc.sliceString(selection.from, selection.to);
+    const sel = view.state.selection.main;
+    const selectedText =
+        sel && !sel.empty
+            ? view.state.sliceDoc(sel.from, sel.to)
+            : view.state.doc.toString();
 
     const tempEditorContainer = document.createElement('div');
-    tempEditorContainer.classList.add('NEWeditor');
-    tempEditorContainer.style.position = 'absolute';
+    tempEditorContainer.style.position = 'fixed';
     tempEditorContainer.style.top = '0';
-    tempEditorContainer.style.left = '-9999px';
-    tempEditorContainer.style.width = `${view.dom.clientWidth}px`;
+    tempEditorContainer.style.left = '0';
+    tempEditorContainer.style.opacity = '0';
+    tempEditorContainer.style.pointerEvents = 'none';
+    tempEditorContainer.style.width = `${TARGET_WIDTH}px`;
+    tempEditorContainer.style.maxHeight = 'none';
+    tempEditorContainer.style.overflow = 'visible';
+    tempEditorContainer.style.contain = 'layout paint size';
     document.body.appendChild(tempEditorContainer);
 
-    let tempView;
-
-
-
-
+    let tempView = null;
 
     try {
         tempView = new EditorView({
@@ -62,38 +73,43 @@ export async function takeScreenshot(view, resultContainer, screenshotBtn) {
             parent: tempEditorContainer,
         });
 
-        /*
-        Give the browser a brief moment to render the new view.
-        This is crucial...
-        to ensure all styles are applied before the screenshot is taken.
-        */
+        await new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve))
+        );
 
-        await new Promise(resolve => setTimeout(resolve, 50));
+        void tempView.dom.getBoundingClientRect();
 
-        const editorBgColor = getComputedStyle(view.dom).backgroundColor;
+        const exportWidth = TARGET_WIDTH;
+        const exportHeight = Math.ceil(tempView.dom.scrollHeight);
 
         const dataUrl = await htmlToImage.toPng(tempView.dom, {
-            backgroundColor: editorBgColor,
-            pixelRatio: 2, // Generate a higher-resolution image
+            pixelRatio: FIXED_PIXEL_RATIO,
+            width: exportWidth,
+            height: exportHeight,
+            // backgroundColor: '#0b0e14',
+            // skipFonts: false,  //MAKES SURE TO LOAD FONT'S IF IT WERE "WebFonts"
         });
 
-        const img = new Image();
+        const img = document.createElement('img');
         img.src = dataUrl;
+        img.alt = 'Code screenshot';
+        img.style.maxWidth = '100%';
+        img.style.height = 'auto';
         resultContainer.innerHTML = '';
         resultContainer.appendChild(img);
-
-    }
-    catch (error) {
-        console.error('Oops, something went wrong!', error);
-        resultContainer.innerHTML = '<p>Sorry, there was an error generating the image.</p>';
-    }
-    finally {
-        // IMPORTANT: Clean up the temporary editor and its container to prevent memory leaks
-        if (tempView) {
-            tempView.destroy();
+    } catch (err) {
+        console.error('Screenshot error:', err);
+        if (resultContainer) {
+            resultContainer.innerHTML =
+                '<p>Sorry, there was an error generating the image.</p>';
         }
-        document.body.removeChild(tempEditorContainer);
-        screenshotBtn.disabled = false;
-        screenshotBtn.textContent = 'Take Screenshot';
+    } finally {
+        if (tempView) tempView.destroy();
+        tempEditorContainer.remove();
+
+        if (screenshotBtn) {
+            screenshotBtn.disabled = false;
+            screenshotBtn.textContent = 'Take Screenshot';
+        }
     }
 }
