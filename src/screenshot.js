@@ -33,68 +33,92 @@ const screenshotExtensions = [
     }),
 ];
 
-export async function takeScreenshot(view, resultContainer, screenshotBtn) {
-    if (screenshotBtn) {
-        screenshotBtn.disabled = true;
-        screenshotBtn.textContent = 'Capturing...';
-    }
-
+function pickTargetWidth(view) {
     const currentWidth = Math.ceil(view.dom.getBoundingClientRect().width);
     if (FORCE_SCREENSHOT_WIDTH_PX != null) {
         INITIAL_EDITOR_WIDTH_PX = FORCE_SCREENSHOT_WIDTH_PX;
     } else if (INITIAL_EDITOR_WIDTH_PX == null) {
         INITIAL_EDITOR_WIDTH_PX = currentWidth;
     }
-    const TARGET_WIDTH = INITIAL_EDITOR_WIDTH_PX;
+    return INITIAL_EDITOR_WIDTH_PX;
+}
 
+function getSelectedOrAll(view) {
     const sel = view.state.selection.main;
-    const selectedText =
-        sel && !sel.empty
-            ? view.state.sliceDoc(sel.from, sel.to)
-            : view.state.doc.toString();
+    return sel && !sel.empty
+        ? view.state.sliceDoc(sel.from, sel.to)
+        : view.state.doc.toString();
+}
 
-    const tempEditorContainer = document.createElement('div');
-    tempEditorContainer.style.position = 'fixed';
-    tempEditorContainer.style.top = '0';
-    tempEditorContainer.style.left = '0';
-    tempEditorContainer.style.opacity = '0';
-    tempEditorContainer.style.pointerEvents = 'none';
-    tempEditorContainer.style.width = `${TARGET_WIDTH}px`;
-    tempEditorContainer.style.maxHeight = 'none';
-    tempEditorContainer.style.overflow = 'visible';
-    tempEditorContainer.style.contain = 'layout paint size';
-    document.body.appendChild(tempEditorContainer);
+async function buildTempView(docText, widthPx) {
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.top = '0';
+    container.style.left = '0';
+    container.style.opacity = '0';
+    container.style.pointerEvents = 'none';
+    container.style.width = `${widthPx}px`;
+    container.style.maxHeight = 'none';
+    container.style.overflow = 'visible';
+    container.style.contain = 'layout paint size';
+    document.body.appendChild(container);
 
-    let tempView = null;
+    const tempView = new EditorView({
+        state: EditorState.create({
+            doc: docText,
+            extensions: screenshotExtensions,
+        }),
+        parent: container,
+    });
 
+    await new Promise((r) =>
+        requestAnimationFrame(() => requestAnimationFrame(r))
+    );
+    void tempView.dom.getBoundingClientRect();
+
+    return { tempView, container };
+}
+
+async function exportPNG(dom, width, height) {
+    return htmlToImage.toPng(dom, {
+        pixelRatio: FIXED_PIXEL_RATIO,
+        width,
+        height,
+    });
+}
+
+async function exportSVG(dom, width, height) {
+    return htmlToImage.toSvg(dom, {
+        width,
+        height,
+    });
+}
+
+async function capture(view, format) {
+    const TARGET_WIDTH = pickTargetWidth(view);
+    const docText = getSelectedOrAll(view);
+    const { tempView, container } = await buildTempView(docText, TARGET_WIDTH);
     try {
-        tempView = new EditorView({
-            state: EditorState.create({
-                doc: selectedText,
-                extensions: screenshotExtensions,
-            }),
-            parent: tempEditorContainer,
-        });
-
-        await new Promise((resolve) =>
-            requestAnimationFrame(() => requestAnimationFrame(resolve))
-        );
-
-        void tempView.dom.getBoundingClientRect();
-
         const exportWidth = TARGET_WIDTH;
         const exportHeight = Math.ceil(tempView.dom.scrollHeight);
+        const url =
+            format === 'svg'
+                ? await exportSVG(tempView.dom, exportWidth, exportHeight)
+                : await exportPNG(tempView.dom, exportWidth, exportHeight);
+        return url;
+    } finally {
+        tempView.destroy();
+        container.remove();
+    }
+}
 
-        //export HTML-TO-IMAGE with pixelRatio value
-        const dataUrl = await htmlToImage.toPng(tempView.dom, {
-            pixelRatio: FIXED_PIXEL_RATIO,
-            width: exportWidth,
-            height: exportHeight,
-            // backgroundColor: '#0b0e14', //if needed a fixed backgroundColor
-            // skipFonts: false,  //MAKES SURE TO LOAD FONT'S IF IT WERE "WebFonts"
-        });
-
-        // Shows screenshot result:
+export async function takeScreenshot(view, resultContainer, screenshotBtn, opts = { format: 'png' }) {
+    if (screenshotBtn) {
+        screenshotBtn.disabled = true;
+        screenshotBtn.textContent = 'Capturing...';
+    }
+    try {
+        const dataUrl = await capture(view, opts.format === 'svg' ? 'svg' : 'png');
         const img = document.createElement('img');
         img.src = dataUrl;
         img.alt = 'Code screenshot';
@@ -105,16 +129,24 @@ export async function takeScreenshot(view, resultContainer, screenshotBtn) {
     } catch (err) {
         console.error('Screenshot error:', err);
         if (resultContainer) {
-            resultContainer.innerHTML =
-                '<p>Sorry, there was an error generating the image.</p>';
+            resultContainer.innerHTML = '<p>Sorry, there was an error generating the image.</p>';
         }
     } finally {
-        if (tempView) tempView.destroy();
-        tempEditorContainer.remove();
-
         if (screenshotBtn) {
             screenshotBtn.disabled = false;
             screenshotBtn.textContent = 'Take Screenshot';
         }
     }
+}
+
+export async function takeScreenshotPNG(view, resultContainer, screenshotBtn) {
+    return takeScreenshot(view, resultContainer, screenshotBtn, { format: 'png' });
+}
+
+export async function takeScreenshotSVG(view, resultContainer, screenshotBtn) {
+    return takeScreenshot(view, resultContainer, screenshotBtn, { format: 'svg' });
+}
+
+export async function getScreenshotDataUrl(view, { format = 'png' } = {}) {
+    return capture(view, format === 'svg' ? 'svg' : 'png');
 }
